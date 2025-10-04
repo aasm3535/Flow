@@ -54,6 +54,7 @@ struct _FlowWindow
     GFile *current_file;
     gdouble font_scale;
     GtkCssProvider *font_provider;
+    gboolean dark_mode;
 };
 
 G_DEFINE_FINAL_TYPE (FlowWindow, flow_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -78,6 +79,8 @@ static gboolean on_key_pressed (GtkEventControllerKey *controller, guint keyval,
 static void update_font_size (FlowWindow *self);
 static void zoom_in (FlowWindow *self);
 static void zoom_out (FlowWindow *self);
+static void toggle_theme (FlowWindow *self);
+static void apply_theme (FlowWindow *self);
 static void show_find (FlowWindow *self);
 static void show_replace (FlowWindow *self);
 static void hide_search (FlowWindow *self);
@@ -123,34 +126,23 @@ static void
 flow_window_init (FlowWindow *self)
 {
     GtkSourceBuffer *buffer;
-    GtkSourceStyleSchemeManager *scheme_manager;
-    GtkSourceStyleScheme *scheme;
     GtkCssProvider *provider;
     GdkDisplay *display;
     GtkEventControllerScroll *scroll_controller;
     GtkEventControllerKey *key_controller;
     const gchar *css =
-        "sourceview { background-color: transparent; color: #d4d4d4; border: none; box-shadow: none; }"
-        "sourceview text { background-color: transparent; }"
-        "#status_bar { border-top: 1px solid alpha(@borders,0.6); padding-top: 2px; padding-bottom: 2px; min-height: 24px; }"
-        "#status_bar GtkLabel { padding-left: 4px; padding-right: 4px; }";
+        "sourceview { background-color: @view_bg_color; border: none; box-shadow: none; }"
+        "sourceview text { background-color: @view_bg_color; }"
+        ".toolbar { border-top: 1px solid alpha(@borders,0.6); }";
 
     gtk_widget_init_template (GTK_WIDGET (self));
 
     self->current_file = NULL;
     self->font_scale = 1.0;
+    self->dark_mode = TRUE;
 
     buffer = GTK_SOURCE_BUFFER (gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view)));
     gtk_text_buffer_set_text (GTK_TEXT_BUFFER (buffer), "", -1);
-    
-    scheme_manager = gtk_source_style_scheme_manager_get_default ();
-    scheme = gtk_source_style_scheme_manager_get_scheme (scheme_manager, "Adwaita-dark");
-    if (!scheme) {
-        scheme = gtk_source_style_scheme_manager_get_scheme (scheme_manager, "oblivion");
-    }
-    if (scheme) {
-        gtk_source_buffer_set_style_scheme (buffer, scheme);
-    }
     
     gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (self->text_view), GTK_WRAP_WORD_CHAR);
     gtk_text_view_set_top_margin (GTK_TEXT_VIEW (self->text_view), 12);
@@ -202,6 +194,7 @@ flow_window_init (FlowWindow *self)
     update_window_title (self);
     update_status (self, "Ready");
     refresh_document_info (self);
+    apply_theme (self);
 }
 
 static void
@@ -361,6 +354,47 @@ zoom_out (FlowWindow *self)
     update_font_size (self);
 }
 
+static void
+apply_theme (FlowWindow *self)
+{
+    GtkSourceBuffer *buffer;
+    GtkSourceStyleSchemeManager *scheme_manager;
+    GtkSourceStyleScheme *scheme;
+    AdwStyleManager *style_manager;
+    const gchar *scheme_name;
+
+    style_manager = adw_style_manager_get_default ();
+    
+    if (self->dark_mode) {
+        adw_style_manager_set_color_scheme (style_manager, ADW_COLOR_SCHEME_FORCE_DARK);
+        scheme_name = "Adwaita-dark";
+    } else {
+        adw_style_manager_set_color_scheme (style_manager, ADW_COLOR_SCHEME_FORCE_LIGHT);
+        scheme_name = "Adwaita";
+    }
+
+    buffer = GTK_SOURCE_BUFFER (gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view)));
+    scheme_manager = gtk_source_style_scheme_manager_get_default ();
+    scheme = gtk_source_style_scheme_manager_get_scheme (scheme_manager, scheme_name);
+    
+    if (scheme) {
+        gtk_source_buffer_set_style_scheme (buffer, scheme);
+    }
+}
+
+static void
+toggle_theme (FlowWindow *self)
+{
+    self->dark_mode = !self->dark_mode;
+    apply_theme (self);
+    
+    if (self->dark_mode) {
+        update_status (self, "Dark theme enabled");
+    } else {
+        update_status (self, "Light theme enabled");
+    }
+}
+
 static gboolean
 on_key_pressed (GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModifierType state, gpointer user_data)
 {
@@ -387,6 +421,10 @@ on_key_pressed (GtkEventControllerKey *controller, guint keyval, guint keycode, 
             case GDK_KEY_h:
             case GDK_KEY_H:
                 show_replace (self);
+                return TRUE;
+            case GDK_KEY_t:
+            case GDK_KEY_T:
+                toggle_theme (self);
                 return TRUE;
             case GDK_KEY_plus:
             case GDK_KEY_equal:
