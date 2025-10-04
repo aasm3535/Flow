@@ -97,14 +97,14 @@
               <object class="AdwHeaderBar">
                 <child type="start">
                   <object class="GtkButton" id="toggle_sidebar_button">
-                    <property name="icon-name">view-dual-symbolic</property>
+                    <property name="icon-name">sidebar-show-right-symbolic</property>
                     <property name="tooltip-text">Toggle Sidebar</property>
                   </object>
                 </child>
                 <child type="end">
                   <object class="GtkButton" id="settings_button">
-                    <property name="icon-name">emblem-system-symbolic</property>
-                    <property name="tooltip-text">Toggle Theme (Settings)</property>
+                    <property name="icon-name">open-menu-symbolic</property>
+                    <property name="tooltip-text">Settings</property>
                   </object>
                 </child>
                 <child type="end">

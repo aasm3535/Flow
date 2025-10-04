@@ -340,8 +340,9 @@ load_folder_tree (FlowWindow *self, GFile *folder, GtkWidget *parent, gint depth
         name = g_file_info_get_name (info);
         dir_file = g_file_get_child (folder, name);
         
-        box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
+        box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
         icon = gtk_image_new_from_icon_name ("folder-symbolic");
+        gtk_image_set_pixel_size (GTK_IMAGE (icon), 16);
         label = gtk_label_new (name);
         gtk_label_set_xalign (GTK_LABEL (label), 0);
         gtk_widget_set_hexpand (label, TRUE);
@@ -353,7 +354,7 @@ load_folder_tree (FlowWindow *self, GFile *folder, GtkWidget *parent, gint depth
         gtk_widget_add_css_class (expander, "file-tree-item");
         
         inner_box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-        gtk_widget_set_margin_start (inner_box, 16);
+        gtk_widget_set_margin_start (inner_box, 12);
         gtk_expander_set_child (GTK_EXPANDER (expander), inner_box);
         
         g_object_set_data_full (G_OBJECT (expander), "folder", dir_file, g_object_unref);
@@ -382,8 +383,9 @@ load_folder_tree (FlowWindow *self, GFile *folder, GtkWidget *parent, gint depth
         gtk_widget_add_css_class (button, "flat");
         gtk_widget_add_css_class (button, "file-tree-item");
         
-        box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
+        box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
         icon = gtk_image_new_from_icon_name ("text-x-generic-symbolic");
+        gtk_image_set_pixel_size (GTK_IMAGE (icon), 16);
         label = gtk_label_new (name);
         gtk_label_set_xalign (GTK_LABEL (label), 0);
         gtk_widget_set_hexpand (label, TRUE);
@@ -956,8 +958,11 @@ flow_window_init (FlowWindow *self)
     GtkEventController *key_controller;
     const gchar *css = 
         "sourceview { background-color: @view_bg_color; }"
-        ".file-tree-item { min-height: 32px; }"
-        ".file-tree-item > * { min-height: 32px; }";
+        ".file-tree-item { min-height: 28px; padding: 2px 4px; }"
+        ".file-tree-item > box { min-height: 24px; }"
+        ".file-tree-item expander-title-box { min-height: 24px; padding: 0; }"
+        ".file-tree-item image { margin: 0 4px; }"
+        ".file-tree-item label { font-size: 0.9em; }";
     
     gtk_widget_init_template (GTK_WIDGET (self));
     
