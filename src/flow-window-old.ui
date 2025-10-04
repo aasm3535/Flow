@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.4"/>
+  
+  <menu id="file_menu">
+    <section>
+      <item>
+        <attribute name="label">New File</attribute>
+        <attribute name="action">win.new-file</attribute>
+      </item>
+      <item>
+        <attribute name="label">Open File</attribute>
+        <attribute name="action">win.open-file</attribute>
+      </item>
+      <item>
+        <attribute name="label">Open Folder</attribute>
+        <attribute name="action">win.open-folder</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label">Save</attribute>
+        <attribute name="action">win.save-file</attribute>
+      </item>
+      <item>
+        <attribute name="label">Close Tab</attribute>
+        <attribute name="action">win.close-tab</attribute>
+      </item>
+    </section>
+  </menu>
+  
+  <menu id="view_menu">
+    <section>
+      <item>
+        <attribute name="label">Toggle Sidebar</attribute>
+        <attribute name="action">win.toggle-sidebar</attribute>
+      </item>
+      <item>
+        <attribute name="label">Dark Theme</attribute>
+        <attribute name="action">win.toggle-theme</attribute>
+      </item>
+    </section>
+  </menu>
+  
+  <menu id="search_menu">
+    <section>
+      <item>
+        <attribute name="label">Find</attribute>
+        <attribute name="action">win.find</attribute>
+      </item>
+      <item>
+        <attribute name="label">Replace</attribute>
+        <attribute name="action">win.replace</attribute>
+      </item>
+    </section>
+  </menu>
+  
+  <template class="FlowWindow" parent="AdwApplicationWindow">
+    <property name="default-width">1100</property>
+    <property name="default-height">650</property>
+    <property name="content">
+      <object class="AdwOverlaySplitView" id="split_view">
+        <property name="min-sidebar-width">200</property>
+        <property name="max-sidebar-width">300</property>
+        <property name="sidebar-width-fraction">0.2</property>
+        <property name="show-sidebar">true</property>
+        <property name="collapsed">false</property>
+        <property name="enable-show-gesture">true</property>
+        <property name="enable-hide-gesture">true</property>
+        <property name="sidebar">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="AdwHeaderBar">
+                <property name="show-start-title-buttons">false</property>
+                <property name="show-end-title-buttons">false</property>
+                <child type="start">
+                  <object class="GtkLabel">
+                    <property name="label">FILES</property>
+                    <style>
+                      <class name="title"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="margin-start">8</property>
+                <property name="margin-end">8</property>
+                <property name="margin-top">8</property>
+                <property name="spacing">8</property>
+                <child>
+                  <object class="GtkButton" id="open_folder_button">
+                    <property name="label">Open Folder</property>
+                    <property name="halign">fill</property>
+                    <style>
+                      <class name="suggested-action"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkSeparator">
+                <property name="margin-start">8</property>
+                <property name="margin-end">8</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkScrolledWindow">
+                <property name="hscrollbar-policy">never</property>
+                <property name="vexpand">true</property>
+                <child>
+                  <object class="GtkBox" id="file_list_box">
+                    <property name="orientation">vertical</property>
+                    <child>
+                      <object class="GtkLabel" id="folder_label">
+                        <property name="label">No folder opened</property>
+                        <property name="margin-top">32</property>
+                        <property name="halign">center</property>
+                        <property name="valign">start</property>
+                        <property name="vexpand">true</property>
+                        <style>
+                          <class name="dim-label"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkListBox" id="file_list">
+                        <property name="selection-mode">single</property>
+                        <property name="visible">false</property>
+                        <style>
+                          <class name="navigation-sidebar"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
+        <property name="content">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="AdwHeaderBar">
+                <child type="start">
+                  <object class="GtkButton" id="toggle_sidebar_button">
+                    <property name="icon-name">sidebar-show-symbolic</property>
+                    <property name="tooltip-text">Toggle Sidebar</property>
+                  </object>
+                </child>
+                <child type="start">
+                  <object class="GtkSeparator">
+                    <property name="margin-start">6</property>
+                    <property name="margin-end">6</property>
+                  </object>
+                </child>
+                <child type="start">
+                  <object class="GtkBox">
+                    <property name="spacing">0</property>
+                    <style>
+                      <class name="linked"/>
+                    </style>
+                    <child>
+                      <object class="GtkMenuButton">
+                        <property name="label">File</property>
+                        <property name="menu-model">file_menu</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuButton">
+                        <property name="label">View</property>
+                        <property name="menu-model">view_menu</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuButton">
+                        <property name="label">Search</property>
+                        <property name="menu-model">search_menu</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <property name="title-widget">
+                  <object class="AdwWindowTitle" id="title_widget">
+                    <property name="title">Flow</property>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkRevealer" id="search_revealer">
+                <property name="reveal-child">false</property>
+                <property name="transition-type">slide-down</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">6</property>
+                    <property name="margin-start">8</property>
+                    <property name="margin-end">8</property>
+                    <property name="margin-top">6</property>
+                    <property name="margin-bottom">6</property>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="GtkSearchEntry" id="search_entry">
+                            <property name="placeholder-text">Find...</property>
+                            <property name="hexpand">true</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="find_previous_button">
+                            <property name="icon-name">go-up-symbolic</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="find_next_button">
+                            <property name="icon-name">go-down-symbolic</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="close_search_button">
+                            <property name="icon-name">window-close-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="replace_box">
+                        <property name="spacing">6</property>
+                        <property name="visible">false</property>
+                        <child>
+                          <object class="GtkEntry" id="replace_entry">
+                            <property name="placeholder-text">Replace with...</property>
+                            <property name="hexpand">true</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="replace_button">
+                            <property name="label">Replace</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="replace_all_button">
+                            <property name="label">All</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="AdwTabBar" id="tab_bar">
+                <property name="view">tab_view</property>
+                <property name="autohide">false</property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwTabView" id="tab_view">
+                <property name="vexpand">true</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="spacing">12</property>
+                <property name="margin-start">8</property>
+                <property name="margin-end">8</property>
+                <property name="margin-top">2</property>
+                <property name="margin-bottom">2</property>
+                <style>
+                  <class name="toolbar"/>
+                </style>
+                <child>
+                  <object class="GtkLabel" id="status_label">
+                    <property name="label">Ready</property>
+                    <property name="hexpand">true</property>
+                    <property name="halign">start</property>
+                    <property name="ellipsize">end</property>
+                    <style>
+                      <class name="caption"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="position_label">
+                    <property name="label">Ln 1, Col 1</property>
+                    <style>
+                      <class name="caption"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="stats_label">
+                    <property name="label">0 words</property>
+                    <style>
+                      <class name="caption"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </property>
+  </template>
+</interface>
