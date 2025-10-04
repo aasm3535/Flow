@@ -28,4 +28,6 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (FlowWindow, flow_window, FLOW, WINDOW, AdwApplicationWindow)
 
+AdwApplicationWindow *flow_window_new (AdwApplication *application);
+
 G_END_DECLS
