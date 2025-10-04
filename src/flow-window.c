@@ -65,6 +65,7 @@ static void update_stats (FlowWindow *self);
 
 static void on_toggle_sidebar_clicked (GtkButton *button, FlowWindow *self);
 static void on_settings_clicked (GtkButton *button, FlowWindow *self);
+static void on_theme_switch_toggled (GtkSwitch *sw, GParamSpec *pspec, FlowWindow *self);
 static void show_preferences_window (FlowWindow *self);
 static void on_welcome_switch_toggled (GtkSwitch *sw, GParamSpec *pspec, FlowWindow *self);
 static void on_command_palette_clicked (GtkButton *button, FlowWindow *self);
@@ -72,7 +73,7 @@ static void on_open_folder_clicked (GtkButton *button, FlowWindow *self);
 static void on_command_activated (GtkListBox *box, GtkListBoxRow *row, FlowWindow *self);
 static void on_command_search_changed (GtkSearchEntry *entry, FlowWindow *self);
 static gboolean on_key_pressed (GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModifierType state, FlowWindow *self);
-static void on_tab_close_request (AdwTabView *view, AdwTabPage *page, FlowWindow *self);
+static gboolean on_tab_close_request (AdwTabView *view, AdwTabPage *page, FlowWindow *self);
 static void on_file_button_clicked (GtkButton *button, FlowWindow *self);
 static void on_file_row_activated (FlowWindow *self, gpointer user_data);
 static void on_page_attached (AdwTabView *view, AdwTabPage *page, gint position, FlowWindow *self);
@@ -262,9 +263,10 @@ apply_theme (FlowWindow *self)
     for (i = 0; i < n_pages; i++) {
         AdwTabPage *page = adw_tab_view_get_nth_page (self->tab_view, i);
         TabData *data = g_object_get_data (G_OBJECT (page), "tab-data");
-        if (data) {
+        if (data && data->text_view && !data->is_welcome) {
             GtkSourceBuffer *buffer = GTK_SOURCE_BUFFER (gtk_text_view_get_buffer (GTK_TEXT_VIEW (data->text_view)));
-            gtk_source_buffer_set_style_scheme (buffer, scheme);
+            if (GTK_SOURCE_IS_BUFFER (buffer))
+                gtk_source_buffer_set_style_scheme (buffer, scheme);
         }
     }
 }
@@ -491,6 +493,13 @@ on_welcome_switch_toggled (GtkSwitch *sw, GParamSpec *pspec, FlowWindow *self)
 }
 
 static void
+on_theme_switch_toggled (GtkSwitch *sw, GParamSpec *pspec, FlowWindow *self)
+{
+    self->dark_mode = gtk_switch_get_active (sw);
+    apply_theme (self);
+}
+
+static void
 show_preferences_window (FlowWindow *self)
 {
     AdwPreferencesWindow *prefs;
@@ -518,8 +527,7 @@ show_preferences_window (FlowWindow *self)
     theme_switch = GTK_SWITCH (gtk_switch_new ());
     gtk_switch_set_active (theme_switch, self->dark_mode);
     gtk_widget_set_valign (GTK_WIDGET (theme_switch), GTK_ALIGN_CENTER);
-    g_object_set_data (G_OBJECT (theme_switch), "window", self);
-    g_signal_connect_swapped (theme_switch, "notify::active", G_CALLBACK (on_settings_clicked), self);
+    g_signal_connect (theme_switch, "notify::active", G_CALLBACK (on_theme_switch_toggled), self);
     adw_action_row_add_suffix (row, GTK_WIDGET (theme_switch));
     adw_action_row_set_activatable_widget (row, GTK_WIDGET (theme_switch));
     adw_preferences_group_add (group, GTK_WIDGET (row));
@@ -544,12 +552,7 @@ show_preferences_window (FlowWindow *self)
 static void
 on_settings_clicked (GtkButton *button, FlowWindow *self)
 {
-    if (button) {
-        show_preferences_window (self);
-    } else {
-        self->dark_mode = !self->dark_mode;
-        apply_theme (self);
-    }
+    show_preferences_window (self);
 }
 
 static void
@@ -831,10 +834,11 @@ on_file_row_activated (FlowWindow *self, gpointer user_data)
     }
 }
 
-static void
+static gboolean
 on_tab_close_request (AdwTabView *view, AdwTabPage *page, FlowWindow *self)
 {
     adw_tab_view_close_page_finish (view, page, TRUE);
+    return GDK_EVENT_STOP;
 }
 
 static void
@@ -989,7 +993,6 @@ flow_window_init (FlowWindow *self)
     
     g_signal_connect (self->toggle_sidebar_button, "clicked", G_CALLBACK (on_toggle_sidebar_clicked), self);
     g_signal_connect (self->settings_button, "clicked", G_CALLBACK (on_settings_clicked), self);
-    g_signal_connect (self->command_palette_button, "clicked", G_CALLBACK (on_command_palette_clicked), self);
     g_signal_connect (self->open_folder_button, "clicked", G_CALLBACK (on_open_folder_clicked), self);
     g_signal_connect (self->tab_view, "close-page", G_CALLBACK (on_tab_close_request), self);
     g_signal_connect (self->tab_view, "page-attached", G_CALLBACK (on_page_attached), self);
