@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.4"/>
+  <template class="FlowWindow" parent="AdwApplicationWindow">
+    <property name="default-width">900</property>
+    <property name="default-height">600</property>
+    <property name="content">
+      <object class="AdwToolbarView">
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <property name="show-end-title-buttons">true</property>
+            <child type="start">
+              <object class="GtkBox" id="status_bar">
+                <property name="orientation">horizontal</property>
+                <property name="spacing">6</property>
+                <child>
+                  <object class="GtkButton" id="new_button">
+                    <property name="icon-name">list-add-symbolic</property>
+                    <property name="tooltip-text" translatable="yes">New</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="open_button">
+                    <property name="icon-name">folder-symbolic</property>
+                    <property name="tooltip-text" translatable="yes">Open</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="save_button">
+                    <property name="icon-name">text-x-generic-symbolic</property>
+                    <property name="tooltip-text" translatable="yes">Save</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <property name="title-widget">
+              <object class="AdwWindowTitle" id="title_widget">
+                <property name="title" translatable="yes">Untitled</property>
+                <property name="subtitle" translatable="yes">Flow Notepad</property>
+              </object>
+            </property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <property name="spacing">12</property>
+            <property name="margin-start">16</property>
+            <property name="margin-end">16</property>
+            <property name="margin-top">16</property>
+            <property name="margin-bottom">16</property>
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <child>
+              <object class="GtkRevealer" id="search_revealer">
+                <property name="reveal-child">false</property>
+                <property name="transition-type">slide-down</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">6</property>
+                    <property name="margin-start">8</property>
+                    <property name="margin-end">8</property>
+                    <property name="margin-top">8</property>
+                    <property name="margin-bottom">8</property>
+                    <style>
+                      <class name="toolbar"/>
+                    </style>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="GtkSearchEntry" id="search_entry">
+                            <property name="placeholder-text" translatable="yes">Find...</property>
+                            <property name="hexpand">true</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="find_previous_button">
+                            <property name="icon-name">go-up-symbolic</property>
+                            <property name="tooltip-text" translatable="yes">Find Previous</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="find_next_button">
+                            <property name="icon-name">go-down-symbolic</property>
+                            <property name="tooltip-text" translatable="yes">Find Next</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="close_search_button">
+                            <property name="icon-name">window-close-symbolic</property>
+                            <property name="tooltip-text" translatable="yes">Close</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="replace_box">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">6</property>
+                        <property name="visible">false</property>
+                        <child>
+                          <object class="GtkEntry" id="replace_entry">
+                            <property name="placeholder-text" translatable="yes">Replace with...</property>
+                            <property name="hexpand">true</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="replace_button">
+                            <property name="label" translatable="yes">Replace</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="replace_all_button">
+                            <property name="label" translatable="yes">Replace All</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkScrolledWindow">
+                <property name="has-frame">false</property>
+                <property name="hexpand">true</property>
+                <property name="vexpand">true</property>
+                <child>
+                  <object class="GtkSourceView" id="text_view">
+                    <property name="hexpand">true</property>
+                    <property name="vexpand">true</property>
+                    <property name="show-line-numbers">true</property>
+                    <property name="highlight-current-line">true</property>
+                    <property name="auto-indent">true</property>
+                    <property name="indent-on-tab">true</property>
+                    <property name="tab-width">4</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">horizontal</property>
+                <property name="spacing">12</property>
+                <property name="margin-start">8</property>
+                <property name="margin-end">8</property>
+                <property name="margin-top">4</property>
+                <property name="margin-bottom">4</property>
+                <property name="hexpand">true</property>
+                <style>
+                  <class name="statusbar"/>
+                </style>
+                <child>
+                  <object class="GtkLabel" id="status_label">
+                    <property name="label" translatable="yes">Ready</property>
+                    <property name="hexpand">true</property>
+                    <property name="halign">start</property>
+                    <property name="xalign">0</property>
+                    <style>
+                      <class name="caption"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="position_label">
+                    <property name="label" translatable="yes">Ln 1, Col 1</property>
+                    <property name="xalign">1</property>
+                    <style>
+                      <class name="caption"/>
+                      <class name="numeric"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="stats_label">
+                    <property name="label" translatable="yes">Lines: 0 · Words: 0 · Chars: 0</property>
+                    <property name="xalign">1</property>
+                    <style>
+                      <class name="caption"/>
+                      <class name="numeric"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </property>
+  </template>
+</interface>
