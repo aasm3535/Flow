@@ -15,6 +15,8 @@ Built with GTK4 and libadwaita
 
 ---
 
+<img width="890" height="494" alt="image" src="https://github.com/user-attachments/assets/3204f947-6b7a-4ee2-a90f-ff448461b1fb" />
+
 ## ✨ Features
 
 - **🎨 Clean Interface** - Minimalist design with borderless text area and modern UI
