@@ -17,14 +17,17 @@ Built with GTK4 and libadwaita
 
 ## ✨ Features
 
-- **🎨 Clean Interface** - Minimalist design with borderless text area and modern UI
-- **⌨️ Keyboard Shortcuts** - Full keyboard support for quick file operations
-- **🔍 Find and Replace** - Search text with case-insensitive matching and replace functionality
-- **📏 Text Zoom** - Scale text size with Ctrl+Scroll or keyboard shortcuts
-- **📊 Real-time Statistics** - Track lines, words, and character count as you type
+- **📂 File Explorer** - Always-visible sidebar for easy folder navigation and file management
+- **📑 Multiple Tabs** - Open and edit multiple files simultaneously with tab interface
+- **🎨 Menu System** - Intuitive File/View/Search menus instead of toolbar buttons
+- **🎨 Light & Dark Themes** - Toggle between themes with Ctrl+T, automatically applies to all tabs
+- **🔍 Syntax Highlighting** - Automatic language detection with GtkSourceView for 200+ languages
+- **🔍 Find and Replace** - Advanced search with forward/backward navigation and replace all
+- **📏 Text Zoom** - Scale text size with Ctrl+Scroll or keyboard shortcuts (Ctrl+Plus/Minus)
+- **📊 Real-time Statistics** - Track lines, words, and character count for active file
 - **📍 Cursor Tracking** - Always know your current line and column position
-- **💾 Quick Save** - Fast file operations with native GTK dialogs
-- **🎯 Monospace Font** - Perfect for coding and plain text editing
+- **💾 Multi-file Support** - Open entire folders and switch between files instantly
+- **⌨️ Keyboard Shortcuts** - Full keyboard support for all operations
 
 ## 🚀 Installation
 
@@ -34,9 +37,15 @@ Built with GTK4 and libadwaita
 
 - GTK4 >= 4.0
 - libadwaita >= 1.4
+- GtkSourceView >= 5.0
 - Meson >= 0.59
 - GCC or Clang
 - Python 3
+
+On Debian/Ubuntu:
+```bash
+sudo apt install libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev meson
+```
 
 #### Building
 
@@ -63,11 +72,15 @@ sudo ninja -C build install
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+N` | Create new document |
+| `Ctrl+N` | Create new file in new tab |
 | `Ctrl+O` | Open file |
-| `Ctrl+S` | Save file |
+| `Ctrl+Shift+O` | Open folder in File Explorer |
+| `Ctrl+S` | Save current file |
+| `Ctrl+Shift+S` | Save As |
+| `Ctrl+W` | Close current tab |
 | `Ctrl+F` | Find text |
 | `Ctrl+H` | Find and replace |
+| `Ctrl+T` | Toggle light/dark theme |
 | `Ctrl++` | Zoom in (increase text size) |
 | `Ctrl+-` | Zoom out (decrease text size) |
 | `Ctrl+0` | Reset zoom to default |
