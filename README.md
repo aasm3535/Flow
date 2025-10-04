@@ -15,7 +15,7 @@ Built with GTK4 and libadwaita
 
 ---
 
-<img width="890" height="494" alt="image" src="https://github.com/user-attachments/assets/3204f947-6b7a-4ee2-a90f-ff448461b1fb" />
+![Screencast from 2025-10-04 19-27-10](https://github.com/user-attachments/assets/73ee8606-e857-484e-a507-7e2405b18587)
 
 ## ✨ Features
 
