@@ -19,12 +19,13 @@ struct _FlowWindow
 {
     AdwApplicationWindow parent_instance;
     
-    AdwNavigationSplitView *split_view;
+    AdwOverlaySplitView *split_view;
     AdwTabView *tab_view;
     AdwTabBar *tab_bar;
     GtkListBox *file_list;
     GtkLabel *folder_label;
     GtkButton *open_folder_button;
+    GtkButton *toggle_sidebar_button;
     GtkLabel *status_label;
     GtkLabel *position_label;
     GtkLabel *stats_label;
@@ -76,6 +77,7 @@ static void action_zoom_out (GSimpleAction *action, GVariant *parameter, gpointe
 static void action_zoom_reset (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void action_find (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void action_replace (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void action_toggle_sidebar (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 
 static TabData*
 tab_data_new (void)
@@ -327,7 +329,7 @@ update_stats (FlowWindow *self)
     line = gtk_text_iter_get_line (&cursor) + 1;
     col = gtk_text_iter_get_line_offset (&cursor) + 1;
     
-    stats_text = g_strdup_printf ("Lines: %d · Words: %d · Chars: %d", lines, words, chars);
+    stats_text = g_strdup_printf ("%d words", words);
     pos_text = g_strdup_printf ("Ln %d, Col %d", line, col);
     
     gtk_label_set_text (self->stats_label, stats_text);
@@ -507,6 +509,14 @@ action_replace (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 }
 
 static void
+action_toggle_sidebar (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    FlowWindow *self = FLOW_WINDOW (user_data);
+    gboolean visible = adw_overlay_split_view_get_show_sidebar (self->split_view);
+    adw_overlay_split_view_set_show_sidebar (self->split_view, !visible);
+}
+
+static void
 setup_actions (FlowWindow *self)
 {
     GActionEntry entries[] = {
@@ -516,6 +526,7 @@ setup_actions (FlowWindow *self)
         { "save-file", action_save_file },
         { "close-tab", action_close_tab },
         { "toggle-theme", action_toggle_theme },
+        { "toggle-sidebar", action_toggle_sidebar },
         { "zoom-in", action_zoom_in },
         { "zoom-out", action_zoom_out },
         { "zoom-reset", action_zoom_reset },
@@ -559,6 +570,7 @@ flow_window_class_init (FlowWindowClass *klass)
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, file_list);
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, folder_label);
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, open_folder_button);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, toggle_sidebar_button);
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, status_label);
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, position_label);
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, stats_label);
@@ -580,8 +592,8 @@ flow_window_init (FlowWindow *self)
     GtkCssProvider *provider;
     GdkDisplay *display;
     const gchar *css =
-        "sourceview { background-color: @card_bg_color; border-radius: 6px; padding: 4px; }"
-        "sourceview text { background-color: @card_bg_color; }";
+        "sourceview { background-color: @view_bg_color; }"
+        "sourceview text { background-color: @view_bg_color; }";
     
     gtk_widget_init_template (GTK_WIDGET (self));
     
@@ -609,6 +621,7 @@ flow_window_init (FlowWindow *self)
     g_signal_connect (self->tab_view, "notify::selected-page", G_CALLBACK (on_selected_page_changed), self);
     g_signal_connect (self->file_list, "row-activated", G_CALLBACK (on_file_row_activated), self);
     g_signal_connect_swapped (self->open_folder_button, "clicked", G_CALLBACK (action_open_folder), self);
+    g_signal_connect_swapped (self->toggle_sidebar_button, "clicked", G_CALLBACK (action_toggle_sidebar), self);
     
     /* Create initial tab */
     create_new_tab (self, "Untitled", NULL);
