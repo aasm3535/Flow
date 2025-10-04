@@ -40,9 +40,11 @@ struct _FlowWindow
     GtkPopover *command_popover;
     GtkSearchEntry *command_search;
     GtkListBox *command_list;
+    GtkSearchEntry *file_search;
     
     GFile *current_folder;
     gboolean dark_mode;
+    gchar *search_text;
 };
 
 G_DEFINE_FINAL_TYPE (FlowWindow, flow_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -55,6 +57,9 @@ static void create_new_tab (FlowWindow *self, const gchar *title, GFile *file);
 static void create_welcome_tab (FlowWindow *self);
 static void apply_theme (FlowWindow *self);
 static void load_folder (FlowWindow *self, GFile *folder);
+static void load_folder_tree (FlowWindow *self, GFile *folder, GtkWidget *parent, gint depth);
+static void on_expander_activated (GtkExpander *expander, gpointer user_data);
+static void on_file_search_changed (GtkSearchEntry *entry, FlowWindow *self);
 static void update_stats (FlowWindow *self);
 
 static void on_toggle_sidebar_clicked (GtkButton *button, FlowWindow *self);
@@ -65,7 +70,8 @@ static void on_command_activated (GtkListBox *box, GtkListBoxRow *row, FlowWindo
 static void on_command_search_changed (GtkSearchEntry *entry, FlowWindow *self);
 static gboolean on_key_pressed (GtkEventControllerKey *controller, guint keyval, guint keycode, GdkModifierType state, FlowWindow *self);
 static void on_tab_close_request (AdwTabView *view, AdwTabPage *page, FlowWindow *self);
-static void on_file_row_activated (GtkListBox *box, GtkListBoxRow *row, FlowWindow *self);
+static void on_file_button_clicked (GtkButton *button, FlowWindow *self);
+static void on_file_row_activated (FlowWindow *self, gpointer user_data);
 static void on_page_attached (AdwTabView *view, AdwTabPage *page, gint position, FlowWindow *self);
 static void on_selected_page_changed (GObject *object, GParamSpec *pspec, FlowWindow *self);
 static void on_folder_dialog_response (GObject *source, GAsyncResult *result, gpointer user_data);
@@ -246,71 +252,54 @@ apply_theme (FlowWindow *self)
 }
 
 static void
-load_folder (FlowWindow *self, GFile *folder)
+load_folder_tree (FlowWindow *self, GFile *folder, GtkWidget *parent, gint depth)
 {
     GFileEnumerator *enumerator;
     GError *error = NULL;
     GFileInfo *info;
-    GtkWidget *child;
-    GtkListBox *list_box;
+    GPtrArray *dirs;
+    GPtrArray *files;
+    guint i;
+    const gchar *search_text;
     
-    while ((child = gtk_widget_get_first_child (GTK_WIDGET (self->file_list_container))))
-        gtk_box_remove (self->file_list_container, child);
+    if (depth > 10)
+        return;
     
-    list_box = GTK_LIST_BOX (gtk_list_box_new ());
-    gtk_widget_add_css_class (GTK_WIDGET (list_box), "navigation-sidebar");
-    gtk_list_box_set_selection_mode (list_box, GTK_SELECTION_SINGLE);
-    g_signal_connect (list_box, "row-activated", G_CALLBACK (on_file_row_activated), self);
+    search_text = self->search_text;
     
-    enumerator = g_file_enumerate_children (folder, 
-        G_FILE_ATTRIBUTE_STANDARD_NAME "," G_FILE_ATTRIBUTE_STANDARD_TYPE "," G_FILE_ATTRIBUTE_STANDARD_ICON,
+    dirs = g_ptr_array_new ();
+    files = g_ptr_array_new ();
+    
+    enumerator = g_file_enumerate_children (folder,
+        G_FILE_ATTRIBUTE_STANDARD_NAME "," G_FILE_ATTRIBUTE_STANDARD_TYPE,
         G_FILE_QUERY_INFO_NONE, NULL, &error);
+    
     if (!enumerator) {
         g_warning ("Failed to enumerate folder: %s", error->message);
         g_error_free (error);
+        g_ptr_array_free (dirs, TRUE);
+        g_ptr_array_free (files, TRUE);
         return;
     }
-    
-    gtk_widget_set_visible (GTK_WIDGET (self->open_folder_button), FALSE);
-    gtk_widget_set_visible (GTK_WIDGET (self->no_folder_label), FALSE);
     
     while ((info = g_file_enumerator_next_file (enumerator, NULL, &error)) != NULL) {
         const gchar *name;
         GFileType type;
-        GtkWidget *row;
-        GtkWidget *box_row;
-        GtkWidget *icon;
-        GtkWidget *label;
-        GFile *file;
-        const gchar *icon_name;
         
         name = g_file_info_get_name (info);
         type = g_file_info_get_file_type (info);
-        file = g_file_get_child (folder, name);
         
-        icon_name = (type == G_FILE_TYPE_DIRECTORY) ? "folder-symbolic" : "text-x-generic-symbolic";
+        if (search_text && *search_text && !strstr (name, search_text)) {
+            g_object_unref (info);
+            continue;
+        }
         
-        row = gtk_list_box_row_new ();
-        box_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
-        gtk_widget_set_margin_start (box_row, 6);
-        gtk_widget_set_margin_end (box_row, 6);
-        gtk_widget_set_margin_top (box_row, 3);
-        gtk_widget_set_margin_bottom (box_row, 3);
-        
-        icon = gtk_image_new_from_icon_name (icon_name);
-        gtk_box_append (GTK_BOX (box_row), icon);
-        
-        label = gtk_label_new (name);
-        gtk_label_set_xalign (GTK_LABEL (label), 0);
-        gtk_widget_set_hexpand (label, TRUE);
-        gtk_box_append (GTK_BOX (box_row), label);
-        
-        gtk_list_box_row_set_child (GTK_LIST_BOX_ROW (row), box_row);
-        g_object_set_data_full (G_OBJECT (row), "file", file, g_object_unref);
-        g_object_set_data (G_OBJECT (row), "is-directory", GINT_TO_POINTER (type == G_FILE_TYPE_DIRECTORY));
-        
-        gtk_list_box_append (list_box, row);
-        g_object_unref (info);
+        if (type == G_FILE_TYPE_DIRECTORY)
+            g_ptr_array_add (dirs, g_object_ref (info));
+        else if (type == G_FILE_TYPE_REGULAR)
+            g_ptr_array_add (files, g_object_ref (info));
+        else
+            g_object_unref (info);
     }
     
     if (error) {
@@ -319,7 +308,119 @@ load_folder (FlowWindow *self, GFile *folder)
     }
     
     g_object_unref (enumerator);
-    gtk_box_append (self->file_list_container, GTK_WIDGET (list_box));
+    
+    for (i = 0; i < dirs->len; i++) {
+        GtkWidget *expander;
+        GtkWidget *box;
+        GtkWidget *icon;
+        GtkWidget *label;
+        GtkWidget *inner_box;
+        GFile *dir_file;
+        const gchar *name;
+        
+        info = g_ptr_array_index (dirs, i);
+        name = g_file_info_get_name (info);
+        dir_file = g_file_get_child (folder, name);
+        
+        box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
+        icon = gtk_image_new_from_icon_name ("folder-symbolic");
+        label = gtk_label_new (name);
+        gtk_label_set_xalign (GTK_LABEL (label), 0);
+        gtk_widget_set_hexpand (label, TRUE);
+        gtk_box_append (GTK_BOX (box), icon);
+        gtk_box_append (GTK_BOX (box), label);
+        
+        expander = gtk_expander_new (NULL);
+        gtk_expander_set_label_widget (GTK_EXPANDER (expander), box);
+        
+        inner_box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+        gtk_widget_set_margin_start (inner_box, 16);
+        gtk_expander_set_child (GTK_EXPANDER (expander), inner_box);
+        
+        g_object_set_data_full (G_OBJECT (expander), "folder", dir_file, g_object_unref);
+        g_object_set_data (G_OBJECT (expander), "inner-box", inner_box);
+        g_object_set_data (G_OBJECT (expander), "window", self);
+        g_object_set_data (G_OBJECT (expander), "depth", GINT_TO_POINTER (depth));
+        g_signal_connect (expander, "activate", G_CALLBACK (on_expander_activated), self);
+        
+        gtk_box_append (GTK_BOX (parent), expander);
+        g_object_unref (info);
+    }
+    
+    for (i = 0; i < files->len; i++) {
+        GtkWidget *button;
+        GtkWidget *box;
+        GtkWidget *icon;
+        GtkWidget *label;
+        GFile *file;
+        const gchar *name;
+        
+        info = g_ptr_array_index (files, i);
+        name = g_file_info_get_name (info);
+        file = g_file_get_child (folder, name);
+        
+        button = gtk_button_new ();
+        gtk_widget_add_css_class (button, "flat");
+        
+        box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
+        icon = gtk_image_new_from_icon_name ("text-x-generic-symbolic");
+        label = gtk_label_new (name);
+        gtk_label_set_xalign (GTK_LABEL (label), 0);
+        gtk_widget_set_hexpand (label, TRUE);
+        gtk_box_append (GTK_BOX (box), icon);
+        gtk_box_append (GTK_BOX (box), label);
+        
+        gtk_button_set_child (GTK_BUTTON (button), box);
+        g_object_set_data_full (G_OBJECT (button), "file", file, g_object_unref);
+        g_object_set_data (G_OBJECT (button), "window", self);
+        
+        g_signal_connect (button, "clicked", G_CALLBACK (on_file_button_clicked), self);
+        
+        gtk_box_append (GTK_BOX (parent), button);
+        g_object_unref (info);
+    }
+    
+    g_ptr_array_free (dirs, TRUE);
+    g_ptr_array_free (files, TRUE);
+}
+
+static void
+on_expander_activated (GtkExpander *expander, gpointer user_data)
+{
+    GFile *folder;
+    GtkWidget *inner_box;
+    FlowWindow *self;
+    gint depth;
+    gboolean expanded;
+    
+    folder = g_object_get_data (G_OBJECT (expander), "folder");
+    inner_box = g_object_get_data (G_OBJECT (expander), "inner-box");
+    self = g_object_get_data (G_OBJECT (expander), "window");
+    depth = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (expander), "depth"));
+    
+    expanded = gtk_expander_get_expanded (expander);
+    
+    if (!expanded) {
+        GtkWidget *child;
+        while ((child = gtk_widget_get_first_child (inner_box)))
+            gtk_box_remove (GTK_BOX (inner_box), child);
+        
+        load_folder_tree (self, folder, inner_box, depth + 1);
+    }
+}
+
+static void
+load_folder (FlowWindow *self, GFile *folder)
+{
+    GtkWidget *child;
+    
+    while ((child = gtk_widget_get_first_child (GTK_WIDGET (self->file_list_container))))
+        gtk_box_remove (self->file_list_container, child);
+    
+    gtk_widget_set_visible (GTK_WIDGET (self->open_folder_button), FALSE);
+    gtk_widget_set_visible (GTK_WIDGET (self->no_folder_label), FALSE);
+    
+    load_folder_tree (self, folder, GTK_WIDGET (self->file_list_container), 0);
     
     if (self->current_folder)
         g_object_unref (self->current_folder);
@@ -595,27 +696,36 @@ on_open_folder_clicked (GtkButton *button, FlowWindow *self)
 }
 
 static void
-on_file_row_activated (GtkListBox *box, GtkListBoxRow *row, FlowWindow *self)
+on_file_search_changed (GtkSearchEntry *entry, FlowWindow *self)
+{
+    const gchar *text;
+    
+    text = gtk_editable_get_text (GTK_EDITABLE (entry));
+    
+    g_free (self->search_text);
+    self->search_text = g_strdup (text);
+    
+    if (self->current_folder)
+        load_folder (self, self->current_folder);
+}
+
+static void
+on_file_row_activated (FlowWindow *self, gpointer user_data)
 {
     GFile *file;
     gchar *contents;
     gsize length;
     GError *error = NULL;
-    gboolean is_directory;
+    GtkWidget *button;
     
-    if (!row)
+    button = GTK_WIDGET (user_data);
+    if (!button)
         return;
     
-    file = g_object_get_data (G_OBJECT (row), "file");
-    is_directory = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (row), "is-directory"));
+    file = g_object_get_data (G_OBJECT (button), "file");
     
     if (!file)
         return;
-    
-    if (is_directory) {
-        load_folder (self, file);
-        return;
-    }
     
     if (g_file_load_contents (file, NULL, &contents, &length, NULL, &error)) {
         gchar *basename;
@@ -711,6 +821,12 @@ on_key_pressed (GtkEventControllerKey *controller, guint keyval, guint keycode, 
 }
 
 static void
+on_file_button_clicked (GtkButton *button, FlowWindow *self)
+{
+    on_file_row_activated (self, button);
+}
+
+static void
 flow_window_dispose (GObject *object)
 {
     FlowWindow *self = FLOW_WINDOW (object);
@@ -719,6 +835,9 @@ flow_window_dispose (GObject *object)
         g_object_unref (self->current_folder);
         self->current_folder = NULL;
     }
+    
+    g_free (self->search_text);
+    self->search_text = NULL;
     
     G_OBJECT_CLASS (flow_window_parent_class)->dispose (object);
 }
@@ -747,6 +866,7 @@ flow_window_class_init (FlowWindowClass *klass)
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, command_popover);
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, command_search);
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, command_list);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, file_search);
 }
 
 static void
@@ -761,6 +881,7 @@ flow_window_init (FlowWindow *self)
     
     self->current_folder = NULL;
     self->dark_mode = TRUE;
+    self->search_text = NULL;
     
     provider = gtk_css_provider_new ();
     gtk_css_provider_load_from_string (provider, css);
@@ -785,6 +906,7 @@ flow_window_init (FlowWindow *self)
     g_signal_connect (self->tab_view, "notify::selected-page", G_CALLBACK (on_selected_page_changed), self);
     g_signal_connect (self->command_search, "search-changed", G_CALLBACK (on_command_search_changed), self);
     g_signal_connect (self->command_list, "row-activated", G_CALLBACK (on_command_activated), self);
+    g_signal_connect (self->file_search, "search-changed", G_CALLBACK (on_file_search_changed), self);
     
     populate_command_list (self, NULL);
     create_welcome_tab (self);
