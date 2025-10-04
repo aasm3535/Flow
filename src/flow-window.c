@@ -23,6 +23,7 @@
 #include <gio/gio.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
+#include <gtksourceview/gtksource.h>
 #include <string.h>
 
 #include "flow-window.h"
@@ -34,7 +35,7 @@ struct _FlowWindow
     GtkButton *new_button;
     GtkButton *open_button;
     GtkButton *save_button;
-    GtkTextView *text_view;
+    GtkSourceView *text_view;
     GtkLabel *status_label;
     GtkLabel *position_label;
     GtkLabel *stats_label;
@@ -87,6 +88,7 @@ static void on_replace_clicked (GtkButton *button, gpointer user_data);
 static void on_replace_all_clicked (GtkButton *button, gpointer user_data);
 static void on_close_search_clicked (GtkButton *button, gpointer user_data);
 static gboolean find_text (FlowWindow *self, gboolean forward);
+static void set_syntax_highlighting (FlowWindow *self, GFile *file);
 static void flow_window_dispose (GObject *object);
 
 static void
@@ -120,13 +122,16 @@ flow_window_class_init (FlowWindowClass *klass)
 static void
 flow_window_init (FlowWindow *self)
 {
-    GtkTextBuffer *buffer;
+    GtkSourceBuffer *buffer;
+    GtkSourceStyleSchemeManager *scheme_manager;
+    GtkSourceStyleScheme *scheme;
     GtkCssProvider *provider;
     GdkDisplay *display;
     GtkEventControllerScroll *scroll_controller;
     GtkEventControllerKey *key_controller;
     const gchar *css =
-        "#flow-textview { background-color: transparent; border: none; box-shadow: none; }"
+        "#flow-textview { background-color: #1e1e1e; color: #d4d4d4; border: none; box-shadow: none; }"
+        "#flow-textview text { background-color: #1e1e1e; color: #d4d4d4; }"
         "#status_bar { border-top: 1px solid alpha(@borders,0.6); padding-top: 2px; padding-bottom: 2px; min-height: 24px; }"
         "#status_bar GtkLabel { padding-left: 4px; padding-right: 4px; }";
 
@@ -135,14 +140,25 @@ flow_window_init (FlowWindow *self)
     self->current_file = NULL;
     self->font_scale = 1.0;
 
-    buffer = gtk_text_view_get_buffer (self->text_view);
-    gtk_text_buffer_set_text (buffer, "", -1);
-    gtk_text_view_set_wrap_mode (self->text_view, GTK_WRAP_WORD_CHAR);
-    gtk_text_view_set_top_margin (self->text_view, 12);
-    gtk_text_view_set_bottom_margin (self->text_view, 12);
-    gtk_text_view_set_left_margin (self->text_view, 12);
-    gtk_text_view_set_right_margin (self->text_view, 12);
-    gtk_text_view_set_monospace (self->text_view, TRUE);
+    buffer = GTK_SOURCE_BUFFER (gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view)));
+    gtk_text_buffer_set_text (GTK_TEXT_BUFFER (buffer), "", -1);
+    
+    scheme_manager = gtk_source_style_scheme_manager_get_default ();
+    scheme = gtk_source_style_scheme_manager_get_scheme (scheme_manager, "Adwaita-dark");
+    if (!scheme) {
+        scheme = gtk_source_style_scheme_manager_get_scheme (scheme_manager, "oblivion");
+    }
+    if (scheme) {
+        gtk_source_buffer_set_style_scheme (buffer, scheme);
+    }
+    
+    gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (self->text_view), GTK_WRAP_WORD_CHAR);
+    gtk_text_view_set_top_margin (GTK_TEXT_VIEW (self->text_view), 12);
+    gtk_text_view_set_bottom_margin (GTK_TEXT_VIEW (self->text_view), 12);
+    gtk_text_view_set_left_margin (GTK_TEXT_VIEW (self->text_view), 12);
+    gtk_text_view_set_right_margin (GTK_TEXT_VIEW (self->text_view), 12);
+    gtk_source_view_set_tab_width (self->text_view, 4);
+    gtk_source_view_set_insert_spaces_instead_of_tabs (self->text_view, TRUE);
     gtk_widget_set_name (GTK_WIDGET (self->text_view), "flow-textview");
 
     provider = gtk_css_provider_new ();
@@ -226,7 +242,7 @@ update_status (FlowWindow *self, const gchar *message)
 static void
 update_cursor_info (FlowWindow *self)
 {
-    GtkTextBuffer *buffer = gtk_text_view_get_buffer (self->text_view);
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view));
     GtkTextIter iter;
     GtkTextMark *insert_mark = gtk_text_buffer_get_insert (buffer);
     gchar *text;
@@ -272,7 +288,7 @@ count_words (const gchar *text)
 static void
 update_stats_info (FlowWindow *self)
 {
-    GtkTextBuffer *buffer = gtk_text_view_get_buffer (self->text_view);
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view));
     GtkTextIter start;
     GtkTextIter end;
     gchar *text;
@@ -449,7 +465,7 @@ find_text (FlowWindow *self, gboolean forward)
     const gchar *search_text;
     gboolean found;
 
-    buffer = gtk_text_view_get_buffer (self->text_view);
+    buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view));
     search_text = gtk_editable_get_text (GTK_EDITABLE (self->search_entry));
 
     if (!search_text || !*search_text) {
@@ -476,7 +492,7 @@ find_text (FlowWindow *self, gboolean forward)
 
     if (found) {
         gtk_text_buffer_select_range (buffer, &match_start, &match_end);
-        gtk_text_view_scroll_to_iter (self->text_view, &match_start, 0.0, FALSE, 0.0, 0.0);
+        gtk_text_view_scroll_to_iter (GTK_TEXT_VIEW (self->text_view), &match_start, 0.0, FALSE, 0.0, 0.0);
         update_status (self, "Found");
     } else {
         update_status (self, "Not found");
@@ -492,7 +508,7 @@ on_search_changed (GtkSearchEntry *entry, gpointer user_data)
     GtkTextBuffer *buffer;
     GtkTextIter start;
 
-    buffer = gtk_text_view_get_buffer (self->text_view);
+    buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view));
     gtk_text_buffer_get_start_iter (buffer, &start);
     gtk_text_buffer_place_cursor (buffer, &start);
     find_text (self, TRUE);
@@ -521,7 +537,7 @@ on_replace_clicked (GtkButton *button, gpointer user_data)
     GtkTextIter end;
     const gchar *replace_text;
 
-    buffer = gtk_text_view_get_buffer (self->text_view);
+    buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view));
 
     if (gtk_text_buffer_get_selection_bounds (buffer, &start, &end)) {
         replace_text = gtk_editable_get_text (GTK_EDITABLE (self->replace_entry));
@@ -543,7 +559,7 @@ on_replace_all_clicked (GtkButton *button, gpointer user_data)
     gint count = 0;
     gchar *message;
 
-    buffer = gtk_text_view_get_buffer (self->text_view);
+    buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view));
     gtk_text_buffer_get_start_iter (buffer, &start);
     gtk_text_buffer_place_cursor (buffer, &start);
 
@@ -575,6 +591,41 @@ on_close_search_clicked (GtkButton *button, gpointer user_data)
 }
 
 static void
+set_syntax_highlighting (FlowWindow *self, GFile *file)
+{
+    GtkSourceBuffer *buffer;
+    GtkSourceLanguageManager *language_manager;
+    GtkSourceLanguage *language = NULL;
+    gchar *filename;
+    gchar *content_type;
+    gboolean result_uncertain;
+
+    if (!file)
+        return;
+
+    buffer = GTK_SOURCE_BUFFER (gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view)));
+    language_manager = gtk_source_language_manager_get_default ();
+
+    filename = g_file_get_basename (file);
+    content_type = g_content_type_guess (filename, NULL, 0, &result_uncertain);
+
+    if (content_type) {
+        language = gtk_source_language_manager_guess_language (language_manager, filename, content_type);
+        g_free (content_type);
+    }
+
+    if (!language) {
+        language = gtk_source_language_manager_guess_language (language_manager, filename, NULL);
+    }
+
+    if (language) {
+        gtk_source_buffer_set_language (buffer, language);
+    }
+
+    g_free (filename);
+}
+
+static void
 on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data)
 {
     FlowWindow *self = FLOW_WINDOW (user_data);
@@ -594,8 +645,15 @@ on_buffer_mark_set (GtkTextBuffer *buffer, const GtkTextIter *location, GtkTextM
 static void
 on_new_button_clicked (GtkButton *button, FlowWindow *self)
 {
-    GtkTextBuffer *buffer = gtk_text_view_get_buffer (self->text_view);
+    GtkTextBuffer *buffer;
+    GtkSourceBuffer *source_buffer;
+    
+    buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view));
     gtk_text_buffer_set_text (buffer, "", -1);
+    
+    source_buffer = GTK_SOURCE_BUFFER (buffer);
+    gtk_source_buffer_set_language (source_buffer, NULL);
+    
     clear_current_file (self);
     update_status (self, "New document created.");
     refresh_document_info (self);
@@ -654,13 +712,14 @@ open_dialog_completed (GObject *source_object, GAsyncResult *result, gpointer us
         gchar *basename;
         gchar *message;
 
-        buffer = gtk_text_view_get_buffer (self->text_view);
+        buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view));
         if (g_file_load_contents (file, NULL, &contents, &length, NULL, &error)) {
             gtk_text_buffer_set_text (buffer, contents, -1);
             g_free (contents);
 
             clear_current_file (self);
             self->current_file = g_object_ref (file);
+            set_syntax_highlighting (self, file);
             update_window_title (self);
 
             basename = g_file_get_basename (file);
@@ -686,7 +745,7 @@ out:
 static gboolean
 save_buffer_to_file (FlowWindow *self, GFile *file)
 {
-    GtkTextBuffer *buffer = gtk_text_view_get_buffer (self->text_view);
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (self->text_view));
     GtkTextIter start;
     GtkTextIter end;
     gchar *text;
