@@ -130,8 +130,8 @@ flow_window_init (FlowWindow *self)
     GtkEventControllerScroll *scroll_controller;
     GtkEventControllerKey *key_controller;
     const gchar *css =
-        "#flow-textview { background-color: #1e1e1e; color: #d4d4d4; border: none; box-shadow: none; }"
-        "#flow-textview text { background-color: #1e1e1e; color: #d4d4d4; }"
+        "sourceview { background-color: transparent; color: #d4d4d4; border: none; box-shadow: none; }"
+        "sourceview text { background-color: transparent; }"
         "#status_bar { border-top: 1px solid alpha(@borders,0.6); padding-top: 2px; padding-bottom: 2px; min-height: 24px; }"
         "#status_bar GtkLabel { padding-left: 4px; padding-right: 4px; }";
 
