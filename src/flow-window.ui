@@ -97,7 +97,7 @@
               <object class="AdwHeaderBar">
                 <child type="start">
                   <object class="GtkButton" id="toggle_sidebar_button">
-                    <property name="icon-name">sidebar-show-right-symbolic</property>
+                    <property name="icon-name">sidebar-show-right-symbolic-rtl</property>
                     <property name="tooltip-text">Toggle Sidebar</property>
                   </object>
                 </child>

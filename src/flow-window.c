@@ -517,6 +517,7 @@ show_preferences_window (FlowWindow *self)
     adw_action_row_set_subtitle (row, "Use dark color scheme");
     theme_switch = GTK_SWITCH (gtk_switch_new ());
     gtk_switch_set_active (theme_switch, self->dark_mode);
+    gtk_widget_set_valign (GTK_WIDGET (theme_switch), GTK_ALIGN_CENTER);
     g_object_set_data (G_OBJECT (theme_switch), "window", self);
     g_signal_connect_swapped (theme_switch, "notify::active", G_CALLBACK (on_settings_clicked), self);
     adw_action_row_add_suffix (row, GTK_WIDGET (theme_switch));
@@ -528,6 +529,7 @@ show_preferences_window (FlowWindow *self)
     adw_action_row_set_subtitle (row, "Show welcome tab on startup");
     welcome_switch = GTK_SWITCH (gtk_switch_new ());
     gtk_switch_set_active (welcome_switch, self->show_welcome);
+    gtk_widget_set_valign (GTK_WIDGET (welcome_switch), GTK_ALIGN_CENTER);
     g_signal_connect (welcome_switch, "notify::active", G_CALLBACK (on_welcome_switch_toggled), self);
     adw_action_row_add_suffix (row, GTK_WIDGET (welcome_switch));
     adw_action_row_set_activatable_widget (row, GTK_WIDGET (welcome_switch));
