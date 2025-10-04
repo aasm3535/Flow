@@ -1,0 +1,6 @@
+data/ink.coda.Flow.desktop.in
+data/ink.coda.Flow.metainfo.xml.in
+data/ink.coda.Flow.gschema.xml
+src/main.c
+src/flow-window.c
+src/flow-window.ui

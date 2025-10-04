@@ -1,0 +1,26 @@
+# Build directories
+build/
+_build/
+builddir/
+
+# Editor files
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Compiled files
+*.o
+*.lo
+*.la
+*.so
+*.a
+
+# Meson files
+meson-logs/
+meson-private/
