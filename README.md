@@ -15,6 +15,8 @@ Built with GTK4 and libadwaita
 
 ---
 
+![Screencast from 2025-10-04 19-27-10](https://github.com/user-attachments/assets/73ee8606-e857-484e-a507-7e2405b18587)
+
 ## ✨ Features
 
 - **📂 File Explorer** - Always-visible sidebar for easy folder navigation and file management
