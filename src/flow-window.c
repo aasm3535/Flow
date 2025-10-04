@@ -45,6 +45,7 @@ struct _FlowWindow
     GFile *current_folder;
     gboolean dark_mode;
     gchar *search_text;
+    gboolean show_welcome;
 };
 
 G_DEFINE_FINAL_TYPE (FlowWindow, flow_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -64,6 +65,8 @@ static void update_stats (FlowWindow *self);
 
 static void on_toggle_sidebar_clicked (GtkButton *button, FlowWindow *self);
 static void on_settings_clicked (GtkButton *button, FlowWindow *self);
+static void show_preferences_window (FlowWindow *self);
+static void on_welcome_switch_toggled (GtkSwitch *sw, GParamSpec *pspec, FlowWindow *self);
 static void on_command_palette_clicked (GtkButton *button, FlowWindow *self);
 static void on_open_folder_clicked (GtkButton *button, FlowWindow *self);
 static void on_command_activated (GtkListBox *box, GtkListBoxRow *row, FlowWindow *self);
@@ -105,13 +108,20 @@ tab_data_new (void)
     return data;
 }
 
+static void
+on_welcome_checkbox_toggled (GtkCheckButton *check, FlowWindow *self)
+{
+    self->show_welcome = !gtk_check_button_get_active (check);
+}
+
 static TabData*
-tab_data_new_welcome (void)
+tab_data_new_welcome (FlowWindow *self)
 {
     TabData *data;
     GtkBox *box;
     GtkLabel *title_label;
     GtkLabel *shortcuts_label;
+    GtkCheckButton *check_button;
     gchar *shortcuts_text;
     
     data = g_new0 (TabData, 1);
@@ -144,6 +154,11 @@ tab_data_new_welcome (void)
     gtk_widget_add_css_class (GTK_WIDGET (shortcuts_label), "monospace");
     gtk_box_append (box, GTK_WIDGET (shortcuts_label));
     g_free (shortcuts_text);
+    
+    check_button = GTK_CHECK_BUTTON (gtk_check_button_new_with_label ("Don't show this again"));
+    gtk_widget_set_margin_top (GTK_WIDGET (check_button), 16);
+    g_signal_connect (check_button, "toggled", G_CALLBACK (on_welcome_checkbox_toggled), self);
+    gtk_box_append (box, GTK_WIDGET (check_button));
     
     data->scrolled = GTK_SCROLLED_WINDOW (gtk_scrolled_window_new ());
     gtk_scrolled_window_set_child (data->scrolled, GTK_WIDGET (box));
@@ -205,7 +220,10 @@ create_welcome_tab (FlowWindow *self)
     TabData *data;
     AdwTabPage *page;
     
-    data = tab_data_new_welcome ();
+    if (!self->show_welcome)
+        return;
+    
+    data = tab_data_new_welcome (self);
     
     page = adw_tab_view_append (self->tab_view, GTK_WIDGET (data->scrolled));
     adw_tab_page_set_title (page, "Welcome");
@@ -332,6 +350,7 @@ load_folder_tree (FlowWindow *self, GFile *folder, GtkWidget *parent, gint depth
         
         expander = gtk_expander_new (NULL);
         gtk_expander_set_label_widget (GTK_EXPANDER (expander), box);
+        gtk_widget_add_css_class (expander, "file-tree-item");
         
         inner_box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
         gtk_widget_set_margin_start (inner_box, 16);
@@ -361,6 +380,7 @@ load_folder_tree (FlowWindow *self, GFile *folder, GtkWidget *parent, gint depth
         
         button = gtk_button_new ();
         gtk_widget_add_css_class (button, "flat");
+        gtk_widget_add_css_class (button, "file-tree-item");
         
         box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
         icon = gtk_image_new_from_icon_name ("text-x-generic-symbolic");
@@ -463,10 +483,69 @@ on_toggle_sidebar_clicked (GtkButton *button, FlowWindow *self)
 }
 
 static void
+on_welcome_switch_toggled (GtkSwitch *sw, GParamSpec *pspec, FlowWindow *self)
+{
+    self->show_welcome = gtk_switch_get_active (sw);
+}
+
+static void
+show_preferences_window (FlowWindow *self)
+{
+    AdwPreferencesWindow *prefs;
+    AdwPreferencesPage *page;
+    AdwPreferencesGroup *group;
+    AdwActionRow *row;
+    GtkSwitch *theme_switch;
+    GtkSwitch *welcome_switch;
+    
+    prefs = ADW_PREFERENCES_WINDOW (adw_preferences_window_new ());
+    gtk_window_set_transient_for (GTK_WINDOW (prefs), GTK_WINDOW (self));
+    gtk_window_set_modal (GTK_WINDOW (prefs), TRUE);
+    gtk_window_set_default_size (GTK_WINDOW (prefs), 600, 400);
+    
+    page = ADW_PREFERENCES_PAGE (adw_preferences_page_new ());
+    adw_preferences_page_set_title (page, "General");
+    adw_preferences_page_set_icon_name (page, "emblem-system-symbolic");
+    
+    group = ADW_PREFERENCES_GROUP (adw_preferences_group_new ());
+    adw_preferences_group_set_title (group, "Appearance");
+    
+    row = ADW_ACTION_ROW (adw_action_row_new ());
+    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), "Dark Theme");
+    adw_action_row_set_subtitle (row, "Use dark color scheme");
+    theme_switch = GTK_SWITCH (gtk_switch_new ());
+    gtk_switch_set_active (theme_switch, self->dark_mode);
+    g_object_set_data (G_OBJECT (theme_switch), "window", self);
+    g_signal_connect_swapped (theme_switch, "notify::active", G_CALLBACK (on_settings_clicked), self);
+    adw_action_row_add_suffix (row, GTK_WIDGET (theme_switch));
+    adw_action_row_set_activatable_widget (row, GTK_WIDGET (theme_switch));
+    adw_preferences_group_add (group, GTK_WIDGET (row));
+    
+    row = ADW_ACTION_ROW (adw_action_row_new ());
+    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), "Show Welcome Screen");
+    adw_action_row_set_subtitle (row, "Show welcome tab on startup");
+    welcome_switch = GTK_SWITCH (gtk_switch_new ());
+    gtk_switch_set_active (welcome_switch, self->show_welcome);
+    g_signal_connect (welcome_switch, "notify::active", G_CALLBACK (on_welcome_switch_toggled), self);
+    adw_action_row_add_suffix (row, GTK_WIDGET (welcome_switch));
+    adw_action_row_set_activatable_widget (row, GTK_WIDGET (welcome_switch));
+    adw_preferences_group_add (group, GTK_WIDGET (row));
+    
+    adw_preferences_page_add (page, group);
+    adw_preferences_window_add (prefs, page);
+    
+    gtk_window_present (GTK_WINDOW (prefs));
+}
+
+static void
 on_settings_clicked (GtkButton *button, FlowWindow *self)
 {
-    self->dark_mode = !self->dark_mode;
-    apply_theme (self);
+    if (button) {
+        show_preferences_window (self);
+    } else {
+        self->dark_mode = !self->dark_mode;
+        apply_theme (self);
+    }
 }
 
 static void
@@ -875,13 +954,17 @@ flow_window_init (FlowWindow *self)
     GtkCssProvider *provider;
     GdkDisplay *display;
     GtkEventController *key_controller;
-    const gchar *css = "sourceview { background-color: @view_bg_color; }";
+    const gchar *css = 
+        "sourceview { background-color: @view_bg_color; }"
+        ".file-tree-item { min-height: 32px; }"
+        ".file-tree-item > * { min-height: 32px; }";
     
     gtk_widget_init_template (GTK_WIDGET (self));
     
     self->current_folder = NULL;
     self->dark_mode = TRUE;
     self->search_text = NULL;
+    self->show_welcome = TRUE;
     
     provider = gtk_css_provider_new ();
     gtk_css_provider_load_from_string (provider, css);

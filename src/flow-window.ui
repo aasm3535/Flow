@@ -36,14 +36,14 @@
                 <property name="orientation">vertical</property>
                 <property name="margin-start">8</property>
                 <property name="margin-end">8</property>
+                <property name="margin-top">8</property>
                 <property name="margin-bottom">8</property>
                 <property name="spacing">8</property>
                 <child>
                   <object class="GtkButton" id="open_folder_button">
                     <property name="label">Open Folder</property>
                     <style>
-                      <class name="pill"/>
-                      <class name="suggested-action"/>
+                      <class name="flat"/>
                     </style>
                   </object>
                 </child>
@@ -80,19 +80,7 @@
                 <property name="orientation">vertical</property>
                 <property name="margin-start">8</property>
                 <property name="margin-end">8</property>
-                <property name="margin-top">4</property>
                 <property name="margin-bottom">8</property>
-                <property name="spacing">4</property>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="label">Search</property>
-                    <property name="xalign">0</property>
-                    <style>
-                      <class name="caption"/>
-                      <class name="dim-label"/>
-                    </style>
-                  </object>
-                </child>
                 <child>
                   <object class="GtkSearchEntry" id="file_search">
                     <property name="placeholder-text">Search files...</property>
@@ -109,7 +97,7 @@
               <object class="AdwHeaderBar">
                 <child type="start">
                   <object class="GtkButton" id="toggle_sidebar_button">
-                    <property name="icon-name">sidebar-show-symbolic</property>
+                    <property name="icon-name">view-dual-symbolic</property>
                     <property name="tooltip-text">Toggle Sidebar</property>
                   </object>
                 </child>
