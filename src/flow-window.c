@@ -40,6 +40,16 @@ struct _FlowWindow
     GtkLabel *stats_label;
     AdwWindowTitle *title_widget;
 
+    GtkRevealer *search_revealer;
+    GtkSearchEntry *search_entry;
+    GtkEntry *replace_entry;
+    GtkBox *replace_box;
+    GtkButton *find_previous_button;
+    GtkButton *find_next_button;
+    GtkButton *close_search_button;
+    GtkButton *replace_button;
+    GtkButton *replace_all_button;
+
     GFile *current_file;
     gdouble font_scale;
     GtkCssProvider *font_provider;
@@ -67,6 +77,16 @@ static gboolean on_key_pressed (GtkEventControllerKey *controller, guint keyval,
 static void update_font_size (FlowWindow *self);
 static void zoom_in (FlowWindow *self);
 static void zoom_out (FlowWindow *self);
+static void show_find (FlowWindow *self);
+static void show_replace (FlowWindow *self);
+static void hide_search (FlowWindow *self);
+static void on_search_changed (GtkSearchEntry *entry, gpointer user_data);
+static void on_find_next_clicked (GtkButton *button, gpointer user_data);
+static void on_find_previous_clicked (GtkButton *button, gpointer user_data);
+static void on_replace_clicked (GtkButton *button, gpointer user_data);
+static void on_replace_all_clicked (GtkButton *button, gpointer user_data);
+static void on_close_search_clicked (GtkButton *button, gpointer user_data);
+static gboolean find_text (FlowWindow *self, gboolean forward);
 static void flow_window_dispose (GObject *object);
 
 static void
@@ -86,6 +106,15 @@ flow_window_class_init (FlowWindowClass *klass)
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, position_label);
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, stats_label);
     gtk_widget_class_bind_template_child (widget_class, FlowWindow, title_widget);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, search_revealer);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, search_entry);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, replace_entry);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, replace_box);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, find_previous_button);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, find_next_button);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, close_search_button);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, replace_button);
+    gtk_widget_class_bind_template_child (widget_class, FlowWindow, replace_all_button);
 }
 
 static void
@@ -145,6 +174,14 @@ flow_window_init (FlowWindow *self)
     g_signal_connect (self->save_button, "clicked", G_CALLBACK (on_save_button_clicked), self);
     g_signal_connect (buffer, "changed", G_CALLBACK (on_buffer_changed), self);
     g_signal_connect (buffer, "mark-set", G_CALLBACK (on_buffer_mark_set), self);
+
+    g_signal_connect (self->search_entry, "search-changed", G_CALLBACK (on_search_changed), self);
+    g_signal_connect (self->search_entry, "activate", G_CALLBACK (on_find_next_clicked), self);
+    g_signal_connect (self->find_next_button, "clicked", G_CALLBACK (on_find_next_clicked), self);
+    g_signal_connect (self->find_previous_button, "clicked", G_CALLBACK (on_find_previous_clicked), self);
+    g_signal_connect (self->close_search_button, "clicked", G_CALLBACK (on_close_search_clicked), self);
+    g_signal_connect (self->replace_button, "clicked", G_CALLBACK (on_replace_clicked), self);
+    g_signal_connect (self->replace_all_button, "clicked", G_CALLBACK (on_replace_all_clicked), self);
 
     update_window_title (self);
     update_status (self, "Ready");
@@ -327,6 +364,14 @@ on_key_pressed (GtkEventControllerKey *controller, guint keyval, guint keycode, 
             case GDK_KEY_S:
                 on_save_button_clicked (NULL, self);
                 return TRUE;
+            case GDK_KEY_f:
+            case GDK_KEY_F:
+                show_find (self);
+                return TRUE;
+            case GDK_KEY_h:
+            case GDK_KEY_H:
+                show_replace (self);
+                return TRUE;
             case GDK_KEY_plus:
             case GDK_KEY_equal:
             case GDK_KEY_KP_Add:
@@ -368,6 +413,165 @@ on_scroll (GtkEventControllerScroll *controller, gdouble dx, gdouble dy, gpointe
     }
 
     return FALSE;
+}
+
+static void
+show_find (FlowWindow *self)
+{
+    gtk_widget_set_visible (GTK_WIDGET (self->replace_box), FALSE);
+    gtk_revealer_set_reveal_child (self->search_revealer, TRUE);
+    gtk_widget_grab_focus (GTK_WIDGET (self->search_entry));
+}
+
+static void
+show_replace (FlowWindow *self)
+{
+    gtk_widget_set_visible (GTK_WIDGET (self->replace_box), TRUE);
+    gtk_revealer_set_reveal_child (self->search_revealer, TRUE);
+    gtk_widget_grab_focus (GTK_WIDGET (self->search_entry));
+}
+
+static void
+hide_search (FlowWindow *self)
+{
+    gtk_revealer_set_reveal_child (self->search_revealer, FALSE);
+    gtk_widget_grab_focus (GTK_WIDGET (self->text_view));
+}
+
+static gboolean
+find_text (FlowWindow *self, gboolean forward)
+{
+    GtkTextBuffer *buffer;
+    GtkTextIter start;
+    GtkTextIter end;
+    GtkTextIter match_start;
+    GtkTextIter match_end;
+    const gchar *search_text;
+    gboolean found;
+
+    buffer = gtk_text_view_get_buffer (self->text_view);
+    search_text = gtk_editable_get_text (GTK_EDITABLE (self->search_entry));
+
+    if (!search_text || !*search_text) {
+        return FALSE;
+    }
+
+    gtk_text_buffer_get_selection_bounds (buffer, &start, &end);
+    if (gtk_text_iter_equal (&start, &end)) {
+        gtk_text_buffer_get_iter_at_mark (buffer, &start, gtk_text_buffer_get_insert (buffer));
+    } else {
+        if (forward)
+            start = end;
+    }
+
+    if (forward) {
+        found = gtk_text_iter_forward_search (&start, search_text,
+                                              GTK_TEXT_SEARCH_TEXT_ONLY | GTK_TEXT_SEARCH_CASE_INSENSITIVE,
+                                              &match_start, &match_end, NULL);
+    } else {
+        found = gtk_text_iter_backward_search (&start, search_text,
+                                               GTK_TEXT_SEARCH_TEXT_ONLY | GTK_TEXT_SEARCH_CASE_INSENSITIVE,
+                                               &match_start, &match_end, NULL);
+    }
+
+    if (found) {
+        gtk_text_buffer_select_range (buffer, &match_start, &match_end);
+        gtk_text_view_scroll_to_iter (self->text_view, &match_start, 0.0, FALSE, 0.0, 0.0);
+        update_status (self, "Found");
+    } else {
+        update_status (self, "Not found");
+    }
+
+    return found;
+}
+
+static void
+on_search_changed (GtkSearchEntry *entry, gpointer user_data)
+{
+    FlowWindow *self = FLOW_WINDOW (user_data);
+    GtkTextBuffer *buffer;
+    GtkTextIter start;
+
+    buffer = gtk_text_view_get_buffer (self->text_view);
+    gtk_text_buffer_get_start_iter (buffer, &start);
+    gtk_text_buffer_place_cursor (buffer, &start);
+    find_text (self, TRUE);
+}
+
+static void
+on_find_next_clicked (GtkButton *button, gpointer user_data)
+{
+    FlowWindow *self = FLOW_WINDOW (user_data);
+    find_text (self, TRUE);
+}
+
+static void
+on_find_previous_clicked (GtkButton *button, gpointer user_data)
+{
+    FlowWindow *self = FLOW_WINDOW (user_data);
+    find_text (self, FALSE);
+}
+
+static void
+on_replace_clicked (GtkButton *button, gpointer user_data)
+{
+    FlowWindow *self = FLOW_WINDOW (user_data);
+    GtkTextBuffer *buffer;
+    GtkTextIter start;
+    GtkTextIter end;
+    const gchar *replace_text;
+
+    buffer = gtk_text_view_get_buffer (self->text_view);
+
+    if (gtk_text_buffer_get_selection_bounds (buffer, &start, &end)) {
+        replace_text = gtk_editable_get_text (GTK_EDITABLE (self->replace_entry));
+        gtk_text_buffer_delete (buffer, &start, &end);
+        gtk_text_buffer_insert (buffer, &start, replace_text, -1);
+        update_status (self, "Replaced");
+        find_text (self, TRUE);
+    } else {
+        update_status (self, "No selection to replace");
+    }
+}
+
+static void
+on_replace_all_clicked (GtkButton *button, gpointer user_data)
+{
+    FlowWindow *self = FLOW_WINDOW (user_data);
+    GtkTextBuffer *buffer;
+    GtkTextIter start;
+    gint count = 0;
+    gchar *message;
+
+    buffer = gtk_text_view_get_buffer (self->text_view);
+    gtk_text_buffer_get_start_iter (buffer, &start);
+    gtk_text_buffer_place_cursor (buffer, &start);
+
+    while (find_text (self, TRUE)) {
+        GtkTextIter sel_start;
+        GtkTextIter sel_end;
+        const gchar *replace_text;
+
+        if (gtk_text_buffer_get_selection_bounds (buffer, &sel_start, &sel_end)) {
+            replace_text = gtk_editable_get_text (GTK_EDITABLE (self->replace_entry));
+            gtk_text_buffer_delete (buffer, &sel_start, &sel_end);
+            gtk_text_buffer_insert (buffer, &sel_start, replace_text, -1);
+            count++;
+        } else {
+            break;
+        }
+    }
+
+    message = g_strdup_printf ("Replaced %d occurrence(s)", count);
+    update_status (self, message);
+    g_free (message);
+}
+
+static void
+on_close_search_clicked (GtkButton *button, gpointer user_data)
+{
+    FlowWindow *self = FLOW_WINDOW (user_data);
+    hide_search (self);
 }
 
 static void

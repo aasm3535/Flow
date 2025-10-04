@@ -19,7 +19,8 @@ Built with GTK4 and libadwaita
 
 - **🎨 Clean Interface** - Minimalist design with borderless text area and modern UI
 - **⌨️ Keyboard Shortcuts** - Full keyboard support for quick file operations
-- **🔍 Text Zoom** - Scale text size with Ctrl+Scroll or keyboard shortcuts
+- **🔍 Find and Replace** - Search text with case-insensitive matching and replace functionality
+- **📏 Text Zoom** - Scale text size with Ctrl+Scroll or keyboard shortcuts
 - **📊 Real-time Statistics** - Track lines, words, and character count as you type
 - **📍 Cursor Tracking** - Always know your current line and column position
 - **💾 Quick Save** - Fast file operations with native GTK dialogs
@@ -65,6 +66,8 @@ sudo ninja -C build install
 | `Ctrl+N` | Create new document |
 | `Ctrl+O` | Open file |
 | `Ctrl+S` | Save file |
+| `Ctrl+F` | Find text |
+| `Ctrl+H` | Find and replace |
 | `Ctrl++` | Zoom in (increase text size) |
 | `Ctrl+-` | Zoom out (decrease text size) |
 | `Ctrl+0` | Reset zoom to default |
@@ -85,13 +88,15 @@ sudo ninja -C build install
 
 ## 📋 Roadmap
 
+- [x] Find and replace
 - [ ] Syntax highlighting
-- [ ] Find and replace
 - [ ] Multiple tabs support
 - [ ] Dark mode toggle
 - [ ] Custom themes
 - [ ] Auto-save functionality
 - [ ] Recent files menu
+- [ ] Line numbers
+- [ ] Case-sensitive search option
 
 ## 🤝 Contributing
 
